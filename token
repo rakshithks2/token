@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract Token is ERC20 {
+    address public ownerAddress;
+
+    event TokensMoved(address indexed sender, address indexed beneficiary, uint256 amount);
+    event OwnershipChanged(address indexed oldOwner, address indexed newOwner);
+
+    modifier onlyOwner() {
+        require(msg.sender == ownerAddress, "Only the owner can call this function");
+        _;
+    }
+
+    constructor(uint256 initialSupply) ERC20("customtoken", "ctk") {
+        ownerAddress = msg.sender;
+        _mint(ownerAddress, initialSupply);
+    }
+
+    function mintTokens(address beneficiaryAddress, uint256 issuedAmount) external onlyOwner {
+        _mint(beneficiaryAddress, issuedAmount);
+        emit TokensMoved(address(0), beneficiaryAddress, issuedAmount);
+    }
+
+    function burnTokens(uint256 destroyedAmount) external {
+        require(balanceOf(msg.sender) >= destroyedAmount, "Insufficient funds");
+        _burn(msg.sender, destroyedAmount);
+        emit TokensMoved(msg.sender, address(0), destroyedAmount);
+    }
+
+    function transferTokens(address receiver, uint256 transferAmount) external returns (bool) {
+        _transfer(msg.sender, receiver, transferAmount);
+        emit TokensMoved(msg.sender, receiver, transferAmount);
+        return true;
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Invalid new owner address");
+        emit OwnershipChanged(ownerAddress, newOwner);
+        ownerAddress = newOwner;
+    }
+
+    function abandonOwnership() external onlyOwner {
+        emit OwnershipChanged(ownerAddress, address(0));
+        ownerAddress = address(0);
+    }
+}
